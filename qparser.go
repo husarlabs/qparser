@@ -4,6 +4,7 @@ import (
     "net/url"
     "strings"
     "strconv"
+    "fmt"
 )
 
 // ListOptions specifies the optional parameters for requests with pagination support
@@ -17,10 +18,12 @@ type ListOptions struct {
 // ExpandParams
 type ExpandParams map[string]ListOptions
 
+type QueryValues map[string][]string
+
 type ParseResult struct {
     Pagination  ListOptions
     Expand      ExpandParams
-    Values      url.Values
+    Values      QueryValues
 }
 
 type ParserOptions struct {
@@ -30,10 +33,11 @@ type ParserOptions struct {
     PageString   string
     ExpandString string
     QueryString  string
-    LeftBracket  string
-    RightBracket string
-    Separator    string
-    KVSeparator  string
+    ParamString  string
+    LeftBracket  rune
+    RightBracket rune
+    Separator    rune
+    KVSeparator  rune
 }
 
 type Parser struct {
@@ -47,6 +51,7 @@ const (
     DefaultPageString   string = "page"
     DefaultExpandString string = "expand"
     DefaultQueryString  string = "q"
+    DefaultParamString  string = "p"
     DefaultLeftBracket  rune   = '('
     DefaultRightBracket rune   = ')'
     DefaultSeparator    rune   = ','
@@ -60,7 +65,7 @@ func ifEmptyStringAssign(s *string, val string) {
 }
 
 func ifEmptyRuneAssign(s *rune, val rune) {
-    if *s == '' {
+    if *s == 0 {
         *s = val
     } 
 }
@@ -78,8 +83,10 @@ func NewParser(opts *ParserOptions) *Parser {
     ifEmptyIntAssign(&opts.LimitValue, DefaultLimitValue)
     ifEmptyIntAssign(&opts.PageValue, DefaultPageValue)
     ifEmptyStringAssign(&opts.LimitString, DefaultLimitString)
+    ifEmptyStringAssign(&opts.PageString, DefaultPageString)
     ifEmptyStringAssign(&opts.ExpandString, DefaultExpandString)
     ifEmptyStringAssign(&opts.QueryString, DefaultQueryString)
+    ifEmptyStringAssign(&opts.ParamString, DefaultParamString)
     ifEmptyRuneAssign(&opts.LeftBracket, DefaultLeftBracket)
     ifEmptyRuneAssign(&opts.RightBracket, DefaultRightBracket)
     ifEmptyRuneAssign(&opts.Separator, DefaultSeparator)
@@ -91,37 +98,41 @@ func NewParser(opts *ParserOptions) *Parser {
 }
 
 func (e *ExpandParams) Get(key string) (*ListOptions, error) {
-    if v, ok := e[key]; ok {
+    if v, ok := (*e)[key]; ok {
         return &v, nil
     }
 
-    return fmt.Errorf("No such key for expanded parameters")
+    return nil, fmt.Errorf("No such key for expanded parameters")
 }
 
 func (qp *Parser) Parse(u *url.URL) (*ParseResult, error) {
     result := &ParseResult{}
-    result.Values := r.URL.Query()    
-    err := result.Pagination.parse(result.Values, qp.options)
+    values := u.Query()    
+    err := result.Pagination.parse(values, qp.options)
     if err != nil {
         return nil, err
     }
-    err = result.Expand.parse(result.Values, qp.options)
+    err = result.Expand.parse(values, qp.options)
     if err != nil {
         return nil, err
     }
-
+    err = result.Values.parse(values, qp.options)
+    if err != nil {
+        return nil, err
+    }
     return result, nil
 }
 
-func ParseString(rawurl string) (*ParseResult, error) {
+func (qp *Parser) ParseString(rawurl string) (*ParseResult, error) {
     u, err := url.Parse(rawurl)
     if err != nil {
         return nil, err
     }
-    return Parse(u)
+    return qp.Parse(u)
 }
 
 func (lo *ListOptions) parse(val url.Values, opts *ParserOptions) error {
+    var err error
     if l := val.Get(opts.LimitString); l != "" {
         lo.Limit, err = strconv.Atoi(l)
         if err != nil {
@@ -142,7 +153,7 @@ func (lo *ListOptions) parse(val url.Values, opts *ParserOptions) error {
 }
 
 func (ep *ExpandParams) parse(val url.Values, opts *ParserOptions) error {
-    params := map[string][]string(values)
+    params := map[string][]string(val)
     expStr := make([]string, 0)
     for _, str := range params[opts.ExpandString] {
         open := false
@@ -195,7 +206,29 @@ func (ep *ExpandParams) parse(val url.Values, opts *ParserOptions) error {
                 }
             }
         }
-        ep[splitted[0]] = bcp
+        if *ep == nil {
+            (*ep) = make(map[string]ListOptions)
+        }
+        (*ep)[splitted[0]] = bcp
     }
+    return nil
+}
+
+func (qv *QueryValues) parse(val url.Values, opts *ParserOptions) error {
+    params := map[string][]string(val)
+    paramsStr := make([]string, 0)
+    for _, str := range params[opts.ParamString] {
+        paramsStr = append(paramsStr, strings.Split(str, string(opts.Separator))...)
+    }
+
+    for _, str := range paramsStr {
+        if *qv == nil {
+            (*qv) = make(map[string][]string)
+        } else if (*qv)[str] == nil {
+            (*qv)[str] = make([]string, 0)
+        }
+        (*qv)[str] = append((*qv)[str], params[opts.QueryString][0])
+    }
+
     return nil
 }
