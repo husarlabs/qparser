@@ -45,9 +45,9 @@ func TestQueryDefault(t *testing.T) {
     parser := NewParser(nil)
     res, err := parser.ParseString(url)
     if assert.Nil(t, err) {
-        if assert.Equal(t, 1, len(res.Values["name"])) {
-            assert.Equal(t, "somename", res.Values["name"][0])    
-            assert.Equal(t, "somename", res.Values["description"][0])   
+        if assert.Equal(t, 1, len(res.Values.Get("name"))) {
+            assert.Equal(t, "somename", res.Values.Get("name")[0])    
+            assert.Equal(t, "somename", res.Values.Get("description")[0])   
         }        
     }
 }
@@ -57,9 +57,9 @@ func TestQueryDefault2(t *testing.T) {
     parser := NewParser(nil)
     res, err := parser.ParseString(url)
     if assert.Nil(t, err) {
-        if assert.Equal(t, 1, len(res.Values["name"])) {
-            assert.Equal(t, "somename", res.Values["name"][0])    
-            assert.Equal(t, "somename", res.Values["description"][0])   
+        if assert.Equal(t, 1, len(res.Values.Get("name"))) {
+            assert.Equal(t, "somename", res.Values.Get("name")[0])    
+            assert.Equal(t, "somename", res.Values.Get("description")[0])   
         }        
     }
 }
@@ -69,7 +69,7 @@ func TestExpandItem(t *testing.T) {
     parser := NewParser(nil)
     res, err := parser.ParseString(url)
     if assert.Nil(t, err) {
-        assert.NotNil(t, res.Expand["relation"])
+        assert.NotNil(t, res.Expand.Get("relation"))
     }
 }
 
@@ -78,9 +78,9 @@ func TestExpandList(t *testing.T) {
     parser := NewParser(nil)
     res, err := parser.ParseString(url)
     if assert.Nil(t, err) {
-        if assert.NotNil(t, res.Expand["relation"]) {
-            assert.Equal(t, 6, res.Expand["relation"].Limit)
-            assert.Equal(t, 8, res.Expand["relation"].Page)
+        if assert.NotNil(t, res.Expand.Get("relation")) {
+            assert.Equal(t, 6, res.Expand.Get("relation").Limit)
+            assert.Equal(t, 8, res.Expand.Get("relation").Page)
         }
     }
 }

@@ -4,7 +4,6 @@ import (
     "net/url"
     "strings"
     "strconv"
-    "fmt"
 )
 
 // ListOptions specifies the optional parameters for requests with pagination support
@@ -21,9 +20,9 @@ type ExpandParams map[string]ListOptions
 type QueryValues map[string][]string
 
 type ParseResult struct {
-    Pagination  ListOptions
-    Expand      ExpandParams
-    Values      QueryValues
+    Pagination  *ListOptions
+    Expand      *ExpandParams
+    Values      *QueryValues
 }
 
 type ParserOptions struct {
@@ -97,16 +96,28 @@ func NewParser(opts *ParserOptions) *Parser {
     }
 }
 
-func (e *ExpandParams) Get(key string) (*ListOptions, error) {
+func (e *ExpandParams) Get(key string) (*ListOptions) {
     if v, ok := (*e)[key]; ok {
-        return &v, nil
+        return &v
     }
 
-    return nil, fmt.Errorf("No such key for expanded parameters")
+    return nil
+}
+
+func (e *QueryValues) Get(key string) ([]string) {
+    if v, ok := (*e)[key]; ok {
+        return v
+    }
+
+    return nil
 }
 
 func (qp *Parser) Parse(u *url.URL) (*ParseResult, error) {
-    result := &ParseResult{}
+    result := &ParseResult{
+        Pagination:  &ListOptions{},
+        Expand:      &ExpandParams{},
+        Values:      &QueryValues{},
+    }
     values := u.Query()    
     err := result.Pagination.parse(values, qp.options)
     if err != nil {
