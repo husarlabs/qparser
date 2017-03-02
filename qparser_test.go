@@ -45,10 +45,11 @@ func TestQueryDefault(t *testing.T) {
     parser := NewParser(nil)
     res, err := parser.ParseString(url)
     if assert.Nil(t, err) {
-        if assert.Equal(t, 1, len(res.Values.Get("name"))) {
-            assert.Equal(t, "somename", res.Values.Get("name")[0])    
-            assert.Equal(t, "somename", res.Values.Get("description")[0])   
+        if assert.Equal(t, 2, len(res.Values.Search.Keys)) {
+            assert.Equal(t, "name", res.Values.Search.Keys[0])    
+            assert.Equal(t, "description", res.Values.Search.Keys[1])   
         }        
+        assert.Equal(t, "somename", res.Values.Search.Value)    
     }
 }
 
@@ -57,12 +58,37 @@ func TestQueryDefault2(t *testing.T) {
     parser := NewParser(nil)
     res, err := parser.ParseString(url)
     if assert.Nil(t, err) {
-        if assert.Equal(t, 1, len(res.Values.Get("name"))) {
-            assert.Equal(t, "somename", res.Values.Get("name")[0])    
-            assert.Equal(t, "somename", res.Values.Get("description")[0])   
+        if assert.Equal(t, 2, len(res.Values.Search.Keys)) {
+            assert.Equal(t, "name", res.Values.Search.Keys[0])    
+            assert.Equal(t, "description", res.Values.Search.Keys[1])   
+        }        
+        assert.Equal(t, "somename", res.Values.Search.Value) 
+    } 
+}
+
+func TestQueryAllParams(t *testing.T) { 
+    url := "http://some-api.com/api/endpoint?q=somename"   
+    parser := NewParser(nil)
+    res, err := parser.ParseString(url)
+    if assert.Nil(t, err) {
+        if assert.Equal(t, 0, len(res.Values.Search.Keys)) {
+            assert.Equal(t, "somename", res.Values.Search.Value) 
         }        
     }
 }
+
+func TestQueryParticular(t *testing.T) { 
+    url := "http://some-api.com/api/endpoint?fruit=apple&color=red"   
+    parser := NewParser(nil)
+    res, err := parser.ParseString(url)
+    if assert.Nil(t, err) {
+        if assert.Equal(t, 2, len(res.Values.Filter)) {
+            assert.Equal(t, "apple", res.Values.Filter["fruit"][0]) 
+            assert.Equal(t, "red", res.Values.Filter["color"][0]) 
+        }        
+    }
+}
+
 
 func TestExpandItem(t *testing.T) { 
     url := "http://some-api.com/api/endpoint?expand=relation"   

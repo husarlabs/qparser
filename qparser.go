@@ -17,12 +17,20 @@ type ListOptions struct {
 // ExpandParams
 type ExpandParams map[string]ListOptions
 
-type QueryValues map[string][]string
+type SearchValue struct {
+    Value   string      `json:"value"`
+    Keys    []string    `json:"keys"`
+}
+
+type QueryValues struct {
+    Search *SearchValue         `json:"search"`
+    Filter map[string][]string  `json:"filter"`
+}
 
 type ParseResult struct {
-    Pagination  *ListOptions
-    Expand      *ExpandParams
-    Values      *QueryValues
+    Pagination  *ListOptions    `json:"pagination"`
+    Expand      *ExpandParams   `json:"expand"`
+    Values      *QueryValues    `json:"values"`
 }
 
 type ParserOptions struct {
@@ -105,7 +113,7 @@ func (e *ExpandParams) Get(key string) (*ListOptions) {
 }
 
 func (e *QueryValues) Get(key string) ([]string) {
-    if v, ok := (*e)[key]; ok {
+    if v, ok := e.Filter[key]; ok {
         return v
     }
 
@@ -116,7 +124,9 @@ func (qp *Parser) Parse(u *url.URL) (*ParseResult, error) {
     result := &ParseResult{
         Pagination:  &ListOptions{},
         Expand:      &ExpandParams{},
-        Values:      &QueryValues{},
+        Values:      &QueryValues{
+            Search: &SearchValue{},
+        },
     }
     values := u.Query()    
     err := result.Pagination.parse(values, qp.options)
@@ -227,19 +237,21 @@ func (ep *ExpandParams) parse(val url.Values, opts *ParserOptions) error {
 
 func (qv *QueryValues) parse(val url.Values, opts *ParserOptions) error {
     params := map[string][]string(val)
-    paramsStr := make([]string, 0)
-    for _, str := range params[opts.ParamString] {
-        paramsStr = append(paramsStr, strings.Split(str, string(opts.Separator))...)
-    }
-
-    for _, str := range paramsStr {
-        if *qv == nil {
-            (*qv) = make(map[string][]string)
-        } else if (*qv)[str] == nil {
-            (*qv)[str] = make([]string, 0)
+    if v, ok := params[opts.QueryString]; ok {
+        qv.Search.Value = v[0]
+        for _, str := range params[opts.ParamString] {
+            qv.Search.Keys = append(qv.Search.Keys, strings.Split(str, string(opts.Separator))...)
         }
-        (*qv)[str] = append((*qv)[str], params[opts.QueryString][0])
     }
-
+    qv.Filter = make(map[string][]string)
+    for k, v := range params {
+        if k != opts.LimitString && k != opts.PageString &&
+        k != opts.ParamString && k != opts.QueryString &&
+        k != opts.ExpandString {
+            for _, s := range v {
+                qv.Filter[k] = append(qv.Filter[k], strings.Split(s, string(opts.Separator))...)
+            }
+        }
+    }
     return nil
 }
