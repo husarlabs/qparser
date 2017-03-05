@@ -270,7 +270,7 @@ func (qv *QueryValues) parse(val url.Values, opts *ParserOptions) error {
 func (f *Fields) parse(val url.Values, opts *ParserOptions) error {
     params := map[string][]string(val)
     if _, ok := params[opts.FieldsString]; ok {
-        for _, str := range params[opts.ParamString] {
+        for _, str := range params[opts.FieldsString] {
             *f = append(*f, strings.Split(str, string(opts.Separator))...)
         }
     }
