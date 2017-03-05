@@ -17,6 +17,8 @@ type ListOptions struct {
 // ExpandParams
 type ExpandParams map[string]ListOptions
 
+type Fields []string 
+
 type SearchValue struct {
     Value   string      `json:"value"`
     Keys    []string    `json:"keys"`
@@ -30,6 +32,7 @@ type QueryValues struct {
 type ParseResult struct {
     Pagination  *ListOptions    `json:"pagination"`
     Expand      *ExpandParams   `json:"expand"`
+    Fields      *Fields         `json:"fields"`
     Values      *QueryValues    `json:"values"`
 }
 
@@ -39,6 +42,7 @@ type ParserOptions struct {
     LimitString  string
     PageString   string
     ExpandString string
+    FieldsString string
     QueryString  string
     ParamString  string
     LeftBracket  rune
@@ -57,6 +61,7 @@ const (
     DefaultLimitString  string = "limit"
     DefaultPageString   string = "page"
     DefaultExpandString string = "expand"
+    DefaultFieldsString string = "fields"
     DefaultQueryString  string = "q"
     DefaultParamString  string = "p"
     DefaultLeftBracket  rune   = '('
@@ -92,6 +97,7 @@ func NewParser(opts *ParserOptions) *Parser {
     ifEmptyStringAssign(&opts.LimitString, DefaultLimitString)
     ifEmptyStringAssign(&opts.PageString, DefaultPageString)
     ifEmptyStringAssign(&opts.ExpandString, DefaultExpandString)
+    ifEmptyStringAssign(&opts.FieldsString, DefaultFieldsString)
     ifEmptyStringAssign(&opts.QueryString, DefaultQueryString)
     ifEmptyStringAssign(&opts.ParamString, DefaultParamString)
     ifEmptyRuneAssign(&opts.LeftBracket, DefaultLeftBracket)
@@ -124,6 +130,7 @@ func (qp *Parser) Parse(u *url.URL) (*ParseResult, error) {
     result := &ParseResult{
         Pagination:  &ListOptions{},
         Expand:      &ExpandParams{},
+        Fields:      &Fields{},
         Values:      &QueryValues{
             Search: &SearchValue{},
         },
@@ -138,6 +145,10 @@ func (qp *Parser) Parse(u *url.URL) (*ParseResult, error) {
         return nil, err
     }
     err = result.Values.parse(values, qp.options)
+    if err != nil {
+        return nil, err
+    }
+    err = result.Fields.parse(values, qp.options)
     if err != nil {
         return nil, err
     }
@@ -247,10 +258,20 @@ func (qv *QueryValues) parse(val url.Values, opts *ParserOptions) error {
     for k, v := range params {
         if k != opts.LimitString && k != opts.PageString &&
         k != opts.ParamString && k != opts.QueryString &&
-        k != opts.ExpandString {
+        k != opts.ExpandString && k != opts.FieldsString {
             for _, s := range v {
                 qv.Filter[k] = append(qv.Filter[k], strings.Split(s, string(opts.Separator))...)
             }
+        }
+    }
+    return nil
+}
+
+func (f *Fields) parse(val url.Values, opts *ParserOptions) error {
+    params := map[string][]string(val)
+    if _, ok := params[opts.FieldsString]; ok {
+        for _, str := range params[opts.ParamString] {
+            *f = append(*f, strings.Split(str, string(opts.Separator))...)
         }
     }
     return nil
