@@ -1,6 +1,7 @@
 package qparser
 
 import (
+"fmt"
     "net/url"
     "strings"
     "strconv"
@@ -9,8 +10,8 @@ import (
 type Order int
 
 const (
-    ASC  Order = iota
-    DESC Order = iota
+    ASC  Order = iota 
+    DESC Order = iota 
 )
 
 // ListOptions specifies the optional parameters for requests with pagination support
@@ -344,4 +345,13 @@ func (o *OrderValues) parse(val url.Values, opts *ParserOptions) error {
         (*o) = append(*o, OrderValue{splitted[0], order})
     }
     return nil
+}
+
+func (o *Order) MarshalJSON() ([]byte, error) {
+    if *o == ASC {
+        return []byte("asc"), nil
+    } else if *o == DESC {
+        return []byte("desc"), nil
+    }
+    return nil, fmt.Errorf("wrong value")
 }
