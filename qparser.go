@@ -1,9 +1,17 @@
 package qparser
 
 import (
+"fmt"
     "net/url"
     "strings"
     "strconv"
+)
+
+type Order int
+
+const (
+    ASC  Order = iota
+    DESC Order = iota
 )
 
 // ListOptions specifies the optional parameters for requests with pagination support
@@ -29,11 +37,19 @@ type QueryValues struct {
     Filter map[string][]string  `json:"filter"`
 }
 
+type OrderValue struct {
+    Key     string              `json:"key"`
+    Order   Order               `json:"order"`
+}
+
+type OrderValues []OrderValue 
+
 type ParseResult struct {
     Pagination  *ListOptions    `json:"pagination"`
     Expand      *ExpandParams   `json:"expand"`
     Fields      *Fields         `json:"fields"`
     Values      *QueryValues    `json:"values"`
+    Order       *OrderValues    `json:"order"`   
 }
 
 type ParserOptions struct {
@@ -43,6 +59,9 @@ type ParserOptions struct {
     PageString   string
     ExpandString string
     FieldsString string
+    OrderString  string
+    AscString    string
+    DescString   string
     QueryString  string
     ParamString  string
     LeftBracket  rune
@@ -62,6 +81,9 @@ const (
     DefaultPageString   string = "page"
     DefaultExpandString string = "expand"
     DefaultFieldsString string = "fields"
+    DefaultOrderString  string = "order"
+    DefaultAscString    string = "asc"
+    DefaultDescString   string = "desc"
     DefaultQueryString  string = "q"
     DefaultParamString  string = "p"
     DefaultLeftBracket  rune   = '('
@@ -98,6 +120,9 @@ func NewParser(opts *ParserOptions) *Parser {
     ifEmptyStringAssign(&opts.PageString, DefaultPageString)
     ifEmptyStringAssign(&opts.ExpandString, DefaultExpandString)
     ifEmptyStringAssign(&opts.FieldsString, DefaultFieldsString)
+    ifEmptyStringAssign(&opts.OrderString, DefaultOrderString)
+    ifEmptyStringAssign(&opts.AscString, DefaultAscString)
+    ifEmptyStringAssign(&opts.DescString, DefaultDescString)
     ifEmptyStringAssign(&opts.QueryString, DefaultQueryString)
     ifEmptyStringAssign(&opts.ParamString, DefaultParamString)
     ifEmptyRuneAssign(&opts.LeftBracket, DefaultLeftBracket)
@@ -134,6 +159,7 @@ func (qp *Parser) Parse(u *url.URL) (*ParseResult, error) {
         Values:      &QueryValues{
             Search: &SearchValue{},
         },
+        Order:       &OrderValues{},
     }
     values := u.Query()    
     err := result.Pagination.parse(values, qp.options)
@@ -149,6 +175,10 @@ func (qp *Parser) Parse(u *url.URL) (*ParseResult, error) {
         return nil, err
     }
     err = result.Fields.parse(values, qp.options)
+    if err != nil {
+        return nil, err
+    }
+    err = result.Order.parse(values, qp.options)
     if err != nil {
         return nil, err
     }
@@ -273,6 +303,48 @@ func (f *Fields) parse(val url.Values, opts *ParserOptions) error {
         for _, str := range params[opts.FieldsString] {
             *f = append(*f, strings.Split(str, string(opts.Separator))...)
         }
+    }
+    return nil
+}
+
+func (o *OrderValues) parse(val url.Values, opts *ParserOptions) error {
+    params := map[string][]string(val)
+    expStr := make([]string, 0)
+    for _, str := range params[opts.OrderString] {
+        open := false
+        position := 0
+        for i, char := range str {            
+            if char == opts.LeftBracket {
+                open = true
+            } else if char == opts.RightBracket {
+                open = false
+            } else if char == opts.Separator && !open {
+                expStr = append(expStr, str[position:i])
+                position = i
+            }
+            if i == (len(str) - 1) {
+                if position > 0 {
+                    position++
+                }
+                expStr = append(expStr, str[position:])
+            }
+        }
+    }
+    fmt.Println(expStr)
+    for _, char := range expStr {
+        splitted := strings.FieldsFunc(char, func(r rune) bool {
+            return r == opts.LeftBracket || r == opts.RightBracket || r == opts.Separator
+        })
+
+        var order Order = ASC 
+
+        if len(splitted) > 1 && splitted[1] == opts.DescString {
+            order = DESC
+        }
+        if *o == nil {
+            (*o) = make([]OrderValue,0)
+        }
+        (*o) = append(*o, OrderValue{splitted[0], order})
     }
     return nil
 }

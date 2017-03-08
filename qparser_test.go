@@ -110,3 +110,19 @@ func TestExpandList(t *testing.T) {
         }
     }
 }
+
+func TestOrder(t *testing.T) { 
+    url := "http://some-api.com/api/endpoint?order=field1(asc),field2(desc)"   
+    parser := NewParser(nil)
+    res, err := parser.ParseString(url)
+    if assert.Nil(t, err) {
+        if assert.NotNil(t, res.Order) {
+            v1 := (*res.Order)[0]
+            v2 := (*res.Order)[1]
+            assert.Equal(t, "field1", v1.Key)
+            assert.Equal(t, ASC, v1.Order)
+            assert.Equal(t, "field2", v2.Key)
+            assert.Equal(t, DESC, v2.Order)
+        }
+    }
+}
