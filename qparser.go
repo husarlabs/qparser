@@ -1,7 +1,6 @@
 package qparser
 
 import (
-"fmt"
     "net/url"
     "strings"
     "strconv"
@@ -35,10 +34,11 @@ type SearchValue struct {
 type QueryValues struct {
     Search *SearchValue         `json:"search"`
     Filter map[string][]string  `json:"filter"`
+    Order       *OrderValues    `json:"order"` 
 }
 
 type OrderValue struct {
-    Key     string              `json:"key"`
+    Field     string            `json:"field"`
     Order   Order               `json:"order"`
 }
 
@@ -48,8 +48,7 @@ type ParseResult struct {
     Pagination  *ListOptions    `json:"pagination"`
     Expand      *ExpandParams   `json:"expand"`
     Fields      *Fields         `json:"fields"`
-    Values      *QueryValues    `json:"values"`
-    Order       *OrderValues    `json:"order"`   
+    Values      *QueryValues    `json:"values"`      
 }
 
 type ParserOptions struct {
@@ -158,8 +157,8 @@ func (qp *Parser) Parse(u *url.URL) (*ParseResult, error) {
         Fields:      &Fields{},
         Values:      &QueryValues{
             Search: &SearchValue{},
-        },
-        Order:       &OrderValues{},
+            Order:       &OrderValues{},
+        },        
     }
     values := u.Query()    
     err := result.Pagination.parse(values, qp.options)
@@ -178,10 +177,7 @@ func (qp *Parser) Parse(u *url.URL) (*ParseResult, error) {
     if err != nil {
         return nil, err
     }
-    err = result.Order.parse(values, qp.options)
-    if err != nil {
-        return nil, err
-    }
+
     return result, nil
 }
 
@@ -294,7 +290,8 @@ func (qv *QueryValues) parse(val url.Values, opts *ParserOptions) error {
             }
         }
     }
-    return nil
+    err := qv.Order.parse(val, opts)
+    return err
 }
 
 func (f *Fields) parse(val url.Values, opts *ParserOptions) error {
@@ -330,7 +327,7 @@ func (o *OrderValues) parse(val url.Values, opts *ParserOptions) error {
             }
         }
     }
-    fmt.Println(expStr)
+
     for _, char := range expStr {
         splitted := strings.FieldsFunc(char, func(r rune) bool {
             return r == opts.LeftBracket || r == opts.RightBracket || r == opts.Separator
