@@ -1,10 +1,11 @@
 package qparser
 
 import (
-"fmt"
+    "fmt"
     "net/url"
     "strings"
     "strconv"
+    "encoding/json"
 )
 
 type Order int
@@ -347,11 +348,23 @@ func (o *OrderValues) parse(val url.Values, opts *ParserOptions) error {
     return nil
 }
 
-func (o *Order) MarshalJSON() ([]byte, error) {
-    if *o == ASC {
-        return []byte("asc"), nil
-    } else if *o == DESC {
-        return []byte("desc"), nil
+func (o *OrderValue) MarshalJSON() ([]byte, error) {
+    if o.Order == ASC {
+        return json.Marshal(&struct{
+            Field string `json:"field"`
+            Order string `json:"order"`
+        }{
+            Field: o.Field,
+            Order: "asc",
+        })
+    } else if o.Order == DESC {
+        return json.Marshal(&struct{
+            Field string `json:"field"`
+            Order string `json:"order"`
+        }{
+            Field: o.Field,
+            Order: "desc",
+        })
     }
     return nil, fmt.Errorf("wrong value")
 }
