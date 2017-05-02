@@ -286,7 +286,7 @@ func (qv *QueryValues) parse(val url.Values, opts *ParserOptions) error {
     for k, v := range params {
         if k != opts.LimitString && k != opts.PageString &&
         k != opts.ParamString && k != opts.QueryString &&
-        k != opts.ExpandString && k != opts.FieldsString {
+        k != opts.ExpandString && k != opts.FieldsString &&  k != opts.OrderString {
             for _, s := range v {
                 qv.Filter[k] = append(qv.Filter[k], strings.Split(s, string(opts.Separator))...)
             }
